@@ -1,3 +1,4 @@
+// Source tutorial: https://maker.pro/arduino/projects/make-arduino-temperature-data-logger
 #include <cstdint> // header defining integer type aliases
 #include <string> // Use string library
 using namespace std; // Saves on having to add 'std::' to std::methodName 
@@ -6,35 +7,32 @@ using namespace std; // Saves on having to add 'std::' to std::methodName
 #include <DS3231.h> // for ds3231 rtc (real time clock
 #include <Wire.h> 
 
-// ********Libary inits********
+// ********Library inits********
 // RTC config
 // File data_file;
 DS3231 myRTC; // Ref to analog pin numbers connected to (SDA,SCL) pins on the rtc module??
 
-// input buffer for line
-// char cinBuf[40];
-// ArduinoInStream cin(Serial, cinBuf, sizeof(cinBuf));
-
 // LM35 temperature sensor config
 const int lm35_pin = A0; // Set lm35 temp sensor input as analog 0
-int temperature;  
+int temperature; // At Earth atm temperatures, accuracy is about +-0.5degC. Ref: https://www.makerguides.com/lm35-arduino-tutorial/
 
 // Init configs. Set these before starting
 // c++ 'object'
+bool setRtcTime = false; // Skip if rtc already set
 class TimeInit {
   public: 
     bool twelveHourMode = false;
     // minute. Range: 0 to 59
-    int minute = 21;
+    int minute = 18;
     // 24 hour format. Range: 0 to 23
-    int hour = 14;
+    int hour = 17;
     // DOW === Day of week. Accepts 1 to 7 (7 === Sun?)    
-    int day = 7; 
+    int day = 6; 
     /*
     * parameters: byte = 1 to 28, 29, 30, or 31, depending on the month and year
     * effect: writes the day of the month to the DS3231
     */ 
-    int date = 14;
+    int date = 20;
     // month. Range: 1 to 12
     int month = 1;
     // year last 2 digits. Range: 00 to 99
@@ -60,7 +58,6 @@ string dowNumberToDay(byte dow)
       return "Sunday";
     default:
       Serial.println(("Invalid dow passed in: " + dow));
-      // cout << "Invalid dow passed in: " + dow;
       break;
   }   
 };
@@ -99,21 +96,23 @@ string getCurrentTime(){
 void setup(){
   Serial.begin(9600);
 
-  ds3221RtcModuleSetup();
-  // sdCardModuleSetup();
-
+  if(setRtcTime){
+    ds3221RtcModuleSetup();
+  }
+ 
   Wire.begin();  
 
   pinMode(lm35_pin, INPUT);
 }
 void loop(){
-  // Reads analog signal from LM35 sensor and converts to temperature (in ?? unit)
-  temperature = analogRead(lm35_pin);
-  temperature = (temperature*500)/1023;
+  // Reads analog signal from LM35 sensor and converts to temperature in degC
+  // Eqn ref: https://www.makerguides.com/lm35-arduino-tutorial/. May need to calibrate '355.9024' figure in different scenarios
+  // Ex: 28.5 degC === raw analogRead volts of 82
+  temperature = analogRead(lm35_pin)*355.9024/1024;
 
   string currentTime = getCurrentTime();
 
-  Serial.println(("Current temperature: " + to_string(temperature)).c_str());
+  Serial.println(("Current temperature: " + to_string(temperature) + "°C").c_str());
   Serial.println(("Current time: " + currentTime).c_str());
 
   delay(3000);
